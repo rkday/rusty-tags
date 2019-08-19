@@ -31,6 +31,9 @@ pub struct Config {
     /// don't output anything but errors
     pub quiet: bool,
 
+    /// look for 'pub use' statements in all .rs files in dependencies, not just lib.rs
+    pub search_all_files: bool,
+
     /// num threads used for the tags creation
     pub num_threads: u32
 }
@@ -48,6 +51,7 @@ impl Config {
            .arg_from_usage("-f --force-recreate 'Forces the recreation of the tags of all dependencies and the Rust standard library'")
            .arg_from_usage("-v --verbose 'Verbose output about all operations'")
            .arg_from_usage("-q --quiet 'Don't output anything but errors'")
+           .arg_from_usage("-a --search-all-files 'Look for `pub use` statements in all .rs files in dependencies, not just lib.rs'")
            .arg_from_usage("-n --num-threads [NUM] 'Num threads used for the tags creation (default: num available physical cpus)'")
            .arg_from_usage("-O --output [FILENAME] 'Name of output tags file.'")
            .get_matches();
@@ -91,6 +95,7 @@ impl Config {
        let force_recreate = matches.is_present("force-recreate");
        let quiet = matches.is_present("quiet");
        let verbose = if quiet { false } else { matches.is_present("verbose") };
+       let search_all_files = matches.is_present("search-all-files");
 
        let num_threads = if verbose {
            println!("Switching to single threaded for verbose output");
@@ -118,6 +123,7 @@ impl Config {
            force_recreate: force_recreate,
            verbose: verbose,
            quiet: quiet,
+           search_all_files: search_all_files,
            num_threads: num_threads
        })
    }

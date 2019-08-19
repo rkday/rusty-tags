@@ -5,6 +5,7 @@ use std::path::Path;
 use tempfile::NamedTempFile;
 use scoped_threadpool::Pool;
 use fnv::FnvHashSet;
+use walkdir::{WalkDir, DirEntry};
 
 use rt_result::RtResult;
 use types::{TagsKind, SourceWithTmpTags, Sources, DepTree, unique_sources};
@@ -100,7 +101,11 @@ pub fn update_tags(config: &Config, dep_tree: &DepTree) -> RtResult<()> {
         // might also contain the tags of dependencies if they're
         // reexported
         {
-            let reexported_crates = find_reexported_crates(&source.dir)?;
+            let reexported_crates = if config.search_all_files {
+                find_reexported_crates_from_all(&source.dir)
+            } else {
+                find_reexported_crates(&source.dir)
+            }?;
 
             if ! reexported_crates.is_empty() && config.verbose {
                 println!("\nFound public reexports in '{}' of:", source.name);
@@ -326,14 +331,42 @@ fn merge_tags(config: &Config,
 
 type CrateName = String;
 
+fn is_rust(entry: &DirEntry) -> bool {
+    entry.file_name()
+         .to_str()
+         .map(|s| s.ends_with(".rs"))
+         .unwrap_or(false)
+}
+
 /// searches in the file `<src_dir>/lib.rs` for external crates
-/// that are reexpored and returns their names
+/// that are reexported and returns their names
 fn find_reexported_crates(src_dir: &Path) -> RtResult<Vec<CrateName>> {
-    let lib_file = src_dir.join("lib.rs");
-    if ! lib_file.is_file() {
+    let lib_root_file = src_dir.join("lib.rs");
+    if ! lib_root_file.is_file() {
         return Ok(Vec::new());
     }
 
+    find_reexported_crates_for_file(&lib_root_file)
+}
+
+/// searches in all .rs files for external crates
+/// that are reexported and returns their names
+fn find_reexported_crates_from_all(src_dir: &Path) -> RtResult<Vec<CrateName>> {
+    let lib_root_file = src_dir.join("lib.rs");
+    if ! lib_root_file.is_file() {
+        return Ok(Vec::new());
+    }
+
+    let mut reexp_crates = Vec::<CrateName>::new();
+    for lib_file in WalkDir::new(&src_dir).into_iter().filter_map(|e| e.ok()).filter(|f| is_rust(f)) {
+        let mut c = find_reexported_crates_for_file(&lib_file.path())?;
+        reexp_crates.append(&mut c);
+    }
+
+    Ok(reexp_crates)
+}
+
+fn find_reexported_crates_for_file(lib_file: &Path) -> RtResult<Vec<CrateName>> {
     let contents = {
         let mut file = File::open(&lib_file)?;
         let mut contents = String::new();

@@ -10,6 +10,7 @@ extern crate serde_json;
 extern crate fnv;
 extern crate semver;
 extern crate dirs as extern_dirs;
+extern crate walkdir;
 
 #[macro_use]
 extern crate serde_derive;
