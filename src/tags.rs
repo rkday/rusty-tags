@@ -332,17 +332,18 @@ fn merge_tags(config: &Config,
 type CrateName = String;
 
 fn is_rust(entry: &DirEntry) -> bool {
-    entry.file_name()
-         .to_str()
-         .map(|s| s.ends_with(".rs"))
-         .unwrap_or(false)
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| s.ends_with(".rs"))
+        .unwrap_or(false)
 }
 
 /// searches in the file `<src_dir>/lib.rs` for external crates
 /// that are reexported and returns their names
 fn find_reexported_crates(src_dir: &Path) -> RtResult<Vec<CrateName>> {
     let lib_root_file = src_dir.join("lib.rs");
-    if ! lib_root_file.is_file() {
+    if !lib_root_file.is_file() {
         return Ok(Vec::new());
     }
 
@@ -353,12 +354,16 @@ fn find_reexported_crates(src_dir: &Path) -> RtResult<Vec<CrateName>> {
 /// that are reexported and returns their names
 fn find_reexported_crates_from_all(src_dir: &Path) -> RtResult<Vec<CrateName>> {
     let lib_root_file = src_dir.join("lib.rs");
-    if ! lib_root_file.is_file() {
+    if !lib_root_file.is_file() {
         return Ok(Vec::new());
     }
 
     let mut reexp_crates = Vec::<CrateName>::new();
-    for lib_file in WalkDir::new(&src_dir).into_iter().filter_map(|e| e.ok()).filter(|f| is_rust(f)) {
+    for lib_file in WalkDir::new(&src_dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|f| is_rust(f))
+    {
         let mut c = find_reexported_crates_for_file(&lib_file.path())?;
         reexp_crates.append(&mut c);
     }
